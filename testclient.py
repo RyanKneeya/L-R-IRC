@@ -5,7 +5,7 @@ import sys
 SERVER = 'localhost'
 PORT = 58900
 
-
+#test
 
 def receive_messages(client_socket):
     while True:
