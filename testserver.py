@@ -30,6 +30,7 @@ def broadcast(message, channel):
             except Exception as e:
                 print(f"Error broadcasting: {e}")
 
+#add member to a channel
 def add_member(channel_name, member):
     if channel_name in channels:
         channels[channel_name].add(member)
@@ -37,17 +38,27 @@ def add_member(channel_name, member):
         channels[channel_name] = {member}
 
 # Removing a member from a channel
-def remove_member(channel_name, member):
-    if channel_name in channels and member in channels[channel_name]:
-        channels[channel_name].remove(member)
-        if not channels[channel_name]:  # Remove the channel if it becomes empty
-            del channels[channel_name]
+def remove_member(member):
+    for channel_name in get_member_channels(member):
+        if channel_name in channels and member in channels[channel_name]:
+            broadcast(f"{member} has left the chat.", channel_name)
+            channels[channel_name].remove(member)
+            if not channels[channel_name]:  # Remove the channel if it becomes empty
+                del channels[channel_name]
 
-def remove_client(client_socket, nickname, channel):
+#Finding what channels a member is apart of
+def get_member_channels(member):
+    member_channels = []
+    for channel, members in channels.items():
+        if member in members:
+            member_channels.append(channel)
+    return member_channels
+
+def remove_client(client_socket, nickname):
+    remove_member(nickname)
     if client_socket in clients.values():
         del clients[nickname]
         print(f"Connection with {nickname} closed.")
-        broadcast(f"{nickname} has left the chat.", channel)
 
 def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -77,17 +88,20 @@ def start_server():
                     client_socket.send(f"Connected to {SERVER}:{PORT} as {nickname} in {channel}\n".encode('utf-8'))
 
                 else:
-                    data = sock.recv(1024)
-                    if not data:
-                        for nickname, client_socket in clients.items():
-                            if client_socket == sock:
-                                remove_client(sock, nickname, channel)
-                                break
-                    else:
-                        for nickname, client_socket in clients.items():
-                            if client_socket == sock:
-                                handle_client(sock, nickname, channel)
-                                break
+                    try:
+                        data = sock.recv(1024)
+                        if not data:
+                            for nickname, client_socket in clients.items():
+                                if client_socket == sock:
+                                    remove_client(sock, nickname)
+                                    break
+                        else:
+                            for nickname, client_socket in clients.items():
+                                if client_socket == sock:
+                                    handle_client(sock, nickname, channel)
+                                    break
+                    except ConnectionResetError:
+                        print("Connection reset by peer")
 
     except KeyboardInterrupt:
         print("\nKeyboard interrupt received. Shutting down...")
