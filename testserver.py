@@ -1,5 +1,6 @@
 import socket
 import select
+import datetime
 
 # Server configuration
 SERVER = 'localhost'
@@ -10,17 +11,21 @@ CHANNEL = '#mychannel'
 clients = {}
 channels = {}
 
-def handle_client(client_socket, nickname, channel):
-    while True:
-        try:
-            message = client_socket.recv(1024).decode('utf-8')
-            if message:
-                broadcast(nickname + ": " + message, channel)
-        except Exception as e:
-            print(f"Error: {e}")
-            remove_member()
-            remove_client(client_socket, nickname)
-            break
+def log(message):
+    with open('server_log.txt', 'a') as log_file:
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_file.write(f"[{timestamp}] {message}\n")
+
+def handle_client(client_socket, nickname, channel, data):
+    try:
+        message = data.decode('utf-8')
+        if message:
+            log(f"Received message from {nickname} in {channel}: {message}")
+            broadcast(nickname + ": " + message, channel)
+    except Exception as e:
+        print(f"Error: {e}")
+        remove_member()
+        remove_client(client_socket, nickname)
 
 def broadcast(message, channel):
     if channel in channels:
@@ -64,6 +69,7 @@ def start_server():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind((SERVER, PORT))
     server.listen()
+    server.setblocking(0)
 
     print(f"[*] Listening on {SERVER}:{PORT}")
 
@@ -98,7 +104,7 @@ def start_server():
                         else:
                             for nickname, client_socket in clients.items():
                                 if client_socket == sock:
-                                    handle_client(sock, nickname, channel)
+                                    handle_client(sock, nickname, channel, data)
                                     break
                     except ConnectionResetError:
                         print("Connection reset by peer")
