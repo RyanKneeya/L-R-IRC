@@ -89,7 +89,7 @@ def start_server():
 
                     print(f"[*] Accepted connection from {addr[0]}:{addr[1]} as {nickname}")
 
-                    broadcast(f"{nickname} has joined the chat.", channel)
+                    broadcast(f"{nickname} has joined the chat.\n", channel)
 
                     client_socket.send(f"Connected to {SERVER}:{PORT} as {nickname} in {channel}\n".encode('utf-8'))
 
