@@ -1,18 +1,11 @@
 import socket
 import select
 import sys
-import datetime
-import errno
 
 SERVER = 'localhost'
 PORT = 58900
 
 #test
-def log(message):
-    with open('client_log.txt', 'a') as log_file:
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_file.write(f"[{timestamp}] {message}\n")
-
 
 def receive_messages(client_socket):
     try:
@@ -29,6 +22,7 @@ def receive_messages(client_socket):
     except Exception as e:
         print(f"Error receiving message: {e}")
         #break
+
 
 def handle_opcode(opcode):
     match opcode:
@@ -70,7 +64,9 @@ def start_client():
             for sock in readable:
                 if sock == client:
                     try:
-                        receive_messages(sock)
+                        message = sock.recv(1024).decode('utf-8')
+                        if message:
+                            print(message)
                     except ConnectionResetError:
                         print("Server closed the connection.")
                         connection_closed = True
@@ -81,6 +77,7 @@ def start_client():
                     #opcode = input()
                     message = input()
                     client.send(f'{channel}: {message}'.encode('utf-8'))
+
     except KeyboardInterrupt:
         pass
     finally:
