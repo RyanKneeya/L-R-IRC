@@ -1,12 +1,19 @@
 import socket
 import select
 import sys
+import pickle
 
 SERVER = 'localhost'
 PORT = 58900
 
-#test
+#Prints the user menu
+def print_menu():
+    print(f'\nPlease Select an action:\n*************************')
+    print(f'[1]: Send a message to a room\n[2]: Join/Create a room\n[3]: Leave a room')
+    print(f'[4]: List all rooms\n[5]: List Rooms you are in\n[6]: List Members in a room')
+    print(f'[-1]: Exit Program\n*************************')
 
+#Interprets the messages back from the server and prints to the screen
 def receive_messages(client_socket):
     try:
         message = client_socket.recv(1024).decode('utf-8')
@@ -23,27 +30,51 @@ def receive_messages(client_socket):
         print(f"Error receiving message: {e}")
         #break
 
-
-def handle_opcode(opcode):
+#Handles the opcode passed in. 
+# NOTE: opcode is a string here, but we pass to server as an int
+def handle_opcode(opcode, client):
     match opcode:
-        case 1:
+        case '1':
             #Code to send message to room
+            channel = input("Select a channel: ")
             message = input("Message: ")
-            payload = {'header': 1}
-            pass
-        case 2:
+            payload = {'header': 1, 'channel': channel, 'message': message}
+            return payload
+        case '2':
             #Code to join/create room
-            pass
-        case 3:
+            channel = input("Choose a channel to join: ")
+            payload = {'header': 2, 'channel': channel}
+            return payload
+        case '3':
             #Code to leave room
-            pass
-        case 4:
+            channel = input("Choose a channel to leave: ")
+            payload = {'header': 3, 'channel': channel}
+            return payload
+        case '4':
             #Code to list all rooms
-            pass
-        case 5:
-            #Returns -1 to indicate user wants to quit 
-            return (-1)
+            payload = {'header': 4, 'message': None}
+            return payload
+        case '5':
+            #Code to list rooms a member is part of
+            payload = {'header': 5, 'message': None}
+            return payload
+        case '6':
+            #Code to list members of a room
+            channel = input("Choose a channel to list its members: ")
+            payload = {'header': 6, 'channel': channel}
+            return payload
+        case '-1':
+            #Returns -1 to indicate user wants to quit
+            client.close()
+            payload = {'header': -1, 'message': None} 
+            return payload
+        case _:
+            print(f'Please enter a command...')
 
+#Handles most of the client
+#Establishes a connection with the server, 
+#Allows nickname and initial channel to join/create
+#Continues with interactive user loop
 def start_client():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect((SERVER, PORT))
@@ -56,28 +87,29 @@ def start_client():
     connection_closed = False
 
     try:
-        #print(f'\nPlease Select an action:')
-        #print(f'[1]: Send a message to a room\n[2]: Join/Create a room\n[3]: Leave a room\n[4]: List all rooms\n[5]: Exit Program\n')
+        print_menu()
         while not connection_closed:
             #Really hard to get anything to print when you want an input cause select doesnt like that
             readable, _, _ = select.select(inputs, [], [])
             for sock in readable:
                 if sock == client:
                     try:
-                        message = sock.recv(1024).decode('utf-8')
-                        if message:
-                            print(message)
+                        receive_messages(sock)
                     except ConnectionResetError:
                         print("Server closed the connection.")
                         connection_closed = True
                         break
                 else:
-                    #print(f'\nPlease Select an action:')
-                    #print(f'[1]: Send a message to a room\n[2]: Join/Create a room\n[3]: Leave a room\n[4]: List all rooms\n[5]: Exit Program\n')
-                    #opcode = input()
-                    message = input()
-                    client.send(f'{channel}: {message}'.encode('utf-8'))
-
+                    opcode = input()
+                    payload = handle_opcode(opcode, client)
+                    
+                    if payload['header'] == -1:
+                        connection_closed = True
+                        break
+                    
+                    pickle_payload = pickle.dumps(payload)
+                    client.send(pickle_payload)
+                    print_menu()
     except KeyboardInterrupt:
         pass
     finally:
