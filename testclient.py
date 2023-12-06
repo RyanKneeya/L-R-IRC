@@ -88,8 +88,9 @@ def start_client():
 
     try:
         print_menu()
+        #print(f'[1]: Send a message to a room\n[2]: Join/Create a room\n[3]: Leave a room\n[4]: List all rooms\n[5]: Exit Program\n')
+
         while not connection_closed:
-            #Really hard to get anything to print when you want an input cause select doesnt like that
             readable, _, _ = select.select(inputs, [], [])
             for sock in readable:
                 if sock == client:
