@@ -58,8 +58,6 @@ def handle_opcode(opcode, client):
             client.close()
             payload = {'header': -1, 'message': None} 
             return payload
-        case _:
-            print(f'Please enter a command...')
 
 #Handles most of the client
 #Establishes a connection with the server, 
@@ -90,7 +88,11 @@ def start_client():
                         break
 
                 else:
+                    valid_options = {'1', '2', '3', '4', '5', '6', '-1'}
                     opcode = input()
+                    while opcode not in valid_options:
+                        print("Thats not a valid input, please enter a number 1-6 or -1 to exit.")
+                        opcode = input()
                     payload = handle_opcode(opcode, client)
                     
                     if payload['header'] == -1:
