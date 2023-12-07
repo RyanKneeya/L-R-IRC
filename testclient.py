@@ -16,7 +16,7 @@ def print_menu():
 def handle_returncode(data):
     match data['opcode']:
         case 10:
-            print(f"{data['message']}")
+            print(f'{data["payload"]}')
         
         #Handles joining a channel
         case 20:
@@ -26,14 +26,15 @@ def handle_returncode(data):
         case 21:
             print(f'Successfully created {data["channel"]}')
 
-        #Handles failure to leave a channel
+        #Handles general errors from server if a serious error occurs
+        #server will terminate connection and server will close
         case 404:
-            print(f'Error removing from {data["channel"]}')
+            print(f'{data["payload"]}')
         
-        #Handles Listing all rooms
+        #Handles Listing all channels
         case 40:
             print(f'All Available Channels:')
-            for room in data['rooms']:
+            for room in data['channels']:
                 print(f'-{room}')
         
         #Handles Listing channels a client is part of
@@ -66,43 +67,43 @@ def handle_opcode(opcode, client):
         case '1':
             #Code to send message to room
             channel = input("Select a channel: ")
-            message = input("Message: ")
-            payload = {'header': 1, 'channel': channel, 'message': message}
-            return payload
+            payload = input("Message: ")
+            message = {'opcode': 1, 'channel': channel, 'payload': payload}
+            return message
         case '2':
             #Code to join/create room
             channel = input("Choose a channel to join: ")
-            payload = {'header': 2, 'channel': channel}
-            return payload
+            message = {'opcode': 2, 'channel': channel}
+            return message
         case '3':
             #Code to leave room
             channel = input("Choose a channel to leave: ")
-            payload = {'header': 3, 'channel': channel}
-            return payload
+            message = {'opcode': 3, 'channel': channel}
+            return message
         case '4':
             #Code to list all rooms
-            payload = {'header': 4, 'message': None}
-            return payload
+            message = {'opcode': 4, 'payload': None}
+            return message
         case '5':
             #Code to list rooms a member is part of
-            payload = {'header': 5, 'message': None}
-            return payload
+            message = {'opcode': 5, 'payload': None}
+            return message
         case '6':
             #Code to list members of a room
             channel = input("Choose a channel to list its members: ")
-            payload = {'header': 6, 'channel': channel}
-            return payload
+            message = {'opcode': 6, 'channel': channel}
+            return message
         case '0':
             #Code to handle initial client connection
             nickname = input("Enter your nickname: ")
             channel = input("Enter the channel you would like to join: ")
-            payload = {'header': 0, 'nickname': nickname, 'channel': channel}
-            return payload
+            message = {'opcode': 0, 'nickname': nickname, 'channel': channel}
+            return message
         case '-1':
             #Returns -1 to indicate user wants to quit
             client.close()
-            payload = {'header': -1, 'message': None} 
-            return payload
+            message = {'opcode': -1, 'payload': None} 
+            return message
 
 #Handles most of the client
 #Establishes a connection with the server, 
@@ -137,13 +138,13 @@ def start_client():
                     while opcode not in valid_options:
                         print("Thats not a valid input, please enter a number 1-6 or -1 to exit.")
                         opcode = input()
-                    payload = handle_opcode(opcode, client)
+                    message = handle_opcode(opcode, client)
                     
-                    if payload['header'] == -1:
+                    if message['opcode'] == -1:
                         connection_closed = True
                         break
                     
-                    pickle_payload = pickle.dumps(payload)
+                    pickle_payload = pickle.dumps(message)
                     client.send(pickle_payload)
                     print_menu()
     except KeyboardInterrupt:
