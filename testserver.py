@@ -82,11 +82,10 @@ def get_member_channels(member):
 
 #NOTE MY BRAIN IS SLOW RN, cant figure out how to list members of a room
 def get_channel_members(channel):
-    channel_members = []
     if channel in channels:
-        for member in channel:
-            channel_members.append(member)
-        return channel_members
+        members_list = channels[channel]
+        members_string = ', '.join(members_list)
+        return f'Members in {channel}: {members_string}'
     else:
         return None
 
@@ -144,12 +143,12 @@ def handle_post_pickle(client_socket, nickname, data):
         
         #List all members of a selected channel
         case 6:
-            if channels[data['channel']]:
-                client_socket.send(f'Members in {data["channel"]}:\n'.encode('utf-8'))
-                for member in channel:
-                    client_socket.send(f'-{member}\n'.encode('utf-8')) 
+            members = get_channel_members(data['channel'])
+            if members:
+                client_socket.send(f'{members}\n'.encode('utf-8')) 
             else:
-                client_socket.send(f'{data["channel"]} does not exist...')
+                members = 'That channel does not exist.'
+                client_socket.send(f'{members}\n'.encode('utf-8'))
 
 def handle_pickle(client_socket, nickname, pickle_chunk):
     try:
