@@ -13,12 +13,51 @@ def print_menu():
     print(f'[4]: List all rooms\n[5]: List Rooms you are in\n[6]: List Members in a room')
     print(f'[-1]: Exit Program\n*************************')
 
+def handle_returncode(data):
+    match data['opcode']:
+        case 10:
+            print(f"{data['message']}")
+        
+        #Handles joining a channel
+        case 20:
+            print(f'Successfully joined {data["channel"]}')
+        
+        #Handles creating a channel
+        case 21:
+            print(f'Successfully created {data["channel"]}')
+
+        #Handles failure to leave a channel
+        case 404:
+            print(f'Error removing from {data["channel"]}')
+        
+        #Handles Listing all rooms
+        case 40:
+            print(f'All Available Channels:')
+            for room in data['rooms']:
+                print(f'-{room}')
+        
+        #Handles Listing channels a client is part of
+        case 50:    
+            print(f'You are currently part of:')
+            for channel in data['channels']:
+                print(f'-{channel}')
+        
+        #Handles Listing all members of a channel
+        case 60:
+            if isinstance(data['members'], str):
+                print(f"{data['members']}")
+            else:
+                for member in data['members']:
+                    print(f'-{member}')
+
 #Interprets the messages back from the server and prints to the screen
 def receive_messages(client_socket):
-    message = client_socket.recv(1024).decode('utf-8')
+    message = client_socket.recv(1024)
+    message = pickle.loads(message)
     if not message:
         raise ValueError()
-    print(message)
+    handle_returncode(message)
+        
 
 #Handles the opcode passed in. 
 # NOTE: opcode is a string here, but we pass to server as an int
@@ -53,6 +92,12 @@ def handle_opcode(opcode, client):
             channel = input("Choose a channel to list its members: ")
             payload = {'header': 6, 'channel': channel}
             return payload
+        case '0':
+            #Code to handle initial client connection
+            nickname = input("Enter your nickname: ")
+            channel = input("Enter the channel you would like to join: ")
+            payload = {'header': 0, 'nickname': nickname, 'channel': channel}
+            return payload
         case '-1':
             #Returns -1 to indicate user wants to quit
             client.close()
@@ -67,11 +112,10 @@ def start_client():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect((SERVER, PORT))
 
-    nickname = input("Enter your nickname: ")
-    client.send(nickname.encode('utf-8'))
-    channel = input("Enter the channel you would like to join: ")
-    client.send(channel.encode('utf-8'))
     inputs = [client, sys.stdin]
+    #Handles initial client connection 
+    pickle_payload = pickle.dumps(handle_opcode('0', client))
+    client.send(pickle_payload)
     connection_closed = False
 
     try:

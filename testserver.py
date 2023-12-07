@@ -9,21 +9,24 @@ CHANNEL = '#mychannel'
 
 # Dictionary to store client connections
 clients = {}
+#Dictionary to store active channels
 channels = {}
 
 #Broadcast now looks for where the sender is sending a message
-#It then sends the message to all members of a room EXCLUDING itself
+#It then sends the message to all members of the room(s) EXCLUDING itself
 #If the channel the sender is attempting to broadcast to does not exist, an error is thrown
 #--------#
 # @PARAM: message - the client message to be broadcast
 # @PARAM: channel - the channel to broadcast to
 # @PARAM: sender - the client nickname who sent the message
 def broadcast(message, channel, sender):
+    payload = {'opcode': 10, 'message': message}
+    pickle_payload = pickle.dumps(payload)
     if channel in channels:
         for client in channels[channel]:
             try:
                 if client != sender:
-                    clients[client].send(message.encode('utf-8'))
+                    clients[client].send(pickle_payload)
             except Exception as e:
                 print(f"Error broadcasting: {e}")
     else:
@@ -42,12 +45,16 @@ def add_member(channel, member):
         channels[channel].add(member)
         for client in clients:
             if client == member:
-                clients[client].send(f'You have joined {channel}!'.encode('utf-8'))
+                payload = {'opcode': 20, 'channel': channel}
+                pickle_payload = pickle.dumps(payload)
+                clients[client].send(pickle_payload)
     else:
         channels[channel] = {member}
         for client in clients:
             if client == member:
-                clients[client].send(f'{channel} has been created!'.encode('utf-8'))
+                payload = {'opcode': 21, 'channel': channel}
+                pickle_payload = pickle.dumps(payload)
+                clients[client].send(pickle_payload)
 
 #Removing a member is now done by checking whether the channel exists, and if the client is a member of the channel
 #If the room does not exist, or the client is not a member, they get a notification of failure to leave
@@ -63,7 +70,9 @@ def remove_member(member, channel):
     else:
         for client in clients:
             if client == member:
-                clients[client].send(f'Unable to remove you from {channel}'.encode('utf-8'))
+                payload = {'opcode': 404, 'channel': channel}
+                pickle_payload = pickle.dumps(payload)
+                clients[client].send(pickle_payload)
 
 #Returns a list of all channels a member is a part of
 #--------#
@@ -78,8 +87,6 @@ def get_member_channels(member):
 #Returns a list of all members in a given channel
 #--------#
 # @PARAM: channel - channel to display all members of
-
-#NOTE MY BRAIN IS SLOW RN, cant figure out how to list members of a room
 def get_channel_members(channel):
     if channel in channels:
         members_list = channels[channel]
@@ -131,25 +138,34 @@ def handle_post_pickle(client_socket, nickname, data):
         
         #List all channels
         case 4:
-            client_socket.send(f'All Available Channels:\n'.encode('utf-8'))
+            global channels
+            rooms = []
             for channel in channels:
-                client_socket.send(f'-{channel}\n'.encode('utf-8'))
+                rooms.append(channel)
+            payload = {'opcode': 40, 'rooms': rooms}
+            pickle_payload = pickle.dumps(payload)
+            client_socket.send(pickle_payload)
         
         #List all channels client is part of
         case 5:
-            client_socket.send(f'You are currently part of:\n'.encode('utf-8'))
-            for channel in get_member_channels(nickname):
-                client_socket.send(f'-{channel}\n'.encode('utf-8'))
+            mem_chan = get_member_channels(nickname)
+            payload = {'opcode': 50, 'channels': mem_chan}
+            pickle_payload = pickle.dumps(payload)
+            client_socket.send(pickle_payload)
         
         #List all members of a selected channel
         case 6:
             members = get_channel_members(data['channel'])
-            if members:
-                client_socket.send(f'{members}\n'.encode('utf-8')) 
-            else:
+            if not members:
                 members = 'That channel does not exist.'
-                client_socket.send(f'{members}\n'.encode('utf-8'))
+            payload = {'opcode': 60, 'members': members}
+            pickle_payload = pickle.dumps(payload)
+            client_socket.send(pickle_payload) 
 
+#Handles the unserializing and pushing of the pickled data
+#--------#
+# @PARAM: client_socket - client's connection to the server
+# @PARAM nickname - alias client goes by in the server
 def handle_pickle(client_socket, nickname, pickle_chunk):
     try:
         unpickled_payload = pickle.loads(pickle_chunk)
@@ -175,8 +191,18 @@ def start_server():
             for sock in readable:
                 if sock == server:
                     client_socket, addr = server.accept()
-                    nickname = client_socket.recv(1024).decode('utf-8')
-                    channel = client_socket.recv(1024).decode('utf-8')
+                    
+                    pickle_chunk = b""
+                    data = client_socket.recv(1024)
+                    
+                    if not data:
+                        print(f'Error accepting connection from {addr[0]}:{addr[1]}...')
+                        break
+                    
+                    pickle_chunk += data
+                    unpickle = pickle.loads(pickle_chunk)
+                    nickname = unpickle['nickname']
+                    channel = unpickle['channel']
                     clients[nickname] = client_socket
                     add_member(channel, nickname)
                     inputs.append(client_socket)
