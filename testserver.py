@@ -33,6 +33,9 @@ def broadcast(message, channel, sender):
         for client in clients:
             if client == sender:
                 errmsg = f'Apologies, {channel} does not exist!'
+                payload = {'opcode': 10, 'message': errmsg}
+                pickle_payload = pickle.dumps(payload)
+                clients[client].send(pickle_payload)
                 clients[client].send(errmsg.encode('utf-8'))
 
 #Adds a member to the channel they specifiy with a notification they have joined
@@ -211,7 +214,10 @@ def start_server():
 
                     broadcast(f"{nickname} has joined the chat.\n", channel, None)
 
-                    client_socket.send(f"Connected to {SERVER}:{PORT} as {nickname} in {channel}\n".encode('utf-8'))
+                    msg = f"Connected to {SERVER}:{PORT} as {nickname} in {channel}\n"
+                    payload = {'opcode': 10, 'message': msg}
+                    pickle_payload = pickle.dumps(payload)
+                    client_socket.send(pickle_payload)
 
                 else:
                     try:
@@ -237,7 +243,10 @@ def start_server():
         # Close all client sockets
         for client_socket in list(clients.values()):
             try:
-                client_socket.send("Server is shutting down. Goodbye!".encode('utf-8'))
+                msg = "Server is shutting down. Goodbye!"
+                payload = {'opcode': 10, 'message': msg}
+                pickle_payload = pickle.dumps(payload)
+                client_socket.send(pickle_payload)
                 client_socket.close()
             except Exception as e:
                 print(f"Error closing connection: {e}")
