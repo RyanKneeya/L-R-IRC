@@ -1,6 +1,5 @@
 import socket
 import select
-import datetime
 import pickle
 
 # Server configuration
@@ -119,7 +118,8 @@ def handle_post_pickle(client_socket, nickname, data):
     match data['header']:
         #Send a message to a specific channel
         case 1:
-            broadcast(f'{nickname}: {data["message"]}', data['channel'], nickname)
+            for chan in data['channel'].split(','):
+                broadcast(f'{nickname}: {data["message"]}', chan, nickname)
         
         #Join/Create a channel
         case 2:
