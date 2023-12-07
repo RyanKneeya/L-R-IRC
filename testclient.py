@@ -15,20 +15,10 @@ def print_menu():
 
 #Interprets the messages back from the server and prints to the screen
 def receive_messages(client_socket):
-    try:
-        message = client_socket.recv(1024).decode('utf-8')
-        if not message:
-            print(f'Message does not exist')
-            #break
-        print(message)
-    except ConnectionResetError:
-        print("Server closed the connection.")
-        print(f"{client_socket}")
-        client_socket.close()
-        #break
-    except Exception as e:
-        print(f"Error receiving message: {e}")
-        #break
+    message = client_socket.recv(1024).decode('utf-8')
+    if not message:
+        raise ValueError()
+    print(message)
 
 #Handles the opcode passed in. 
 # NOTE: opcode is a string here, but we pass to server as an int
@@ -88,18 +78,17 @@ def start_client():
 
     try:
         print_menu()
-        #print(f'[1]: Send a message to a room\n[2]: Join/Create a room\n[3]: Leave a room\n[4]: List all rooms\n[5]: Exit Program\n')
-
         while not connection_closed:
             readable, _, _ = select.select(inputs, [], [])
             for sock in readable:
                 if sock == client:
                     try:
                         receive_messages(sock)
-                    except ConnectionResetError:
+                    except Exception as e:
                         print("Server closed the connection.")
                         connection_closed = True
                         break
+
                 else:
                     opcode = input()
                     payload = handle_opcode(opcode, client)
