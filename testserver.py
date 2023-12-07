@@ -144,13 +144,12 @@ def handle_post_pickle(client_socket, nickname, data):
         
         #List all members of a selected channel
         case 6:
-            members = get_channel_members(data['channel'])
-            if members:
+            if channels[data['channel']]:
                 client_socket.send(f'Members in {data["channel"]}:\n'.encode('utf-8'))
-                for member in members:
+                for member in channel:
                     client_socket.send(f'-{member}\n'.encode('utf-8')) 
             else:
-                client_socket.send(f'{data["channel"]} does not have any members...')
+                client_socket.send(f'{data["channel"]} does not exist...')
 
 def handle_pickle(client_socket, nickname, pickle_chunk):
     try:
